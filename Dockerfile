@@ -13,14 +13,13 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
 RUN apk update
 RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser optipng jpegoptim parallel
 
+RUN mkdir -p ~/.parallel
 RUN touch ~/.parallel/will-cite
-
 RUN sed -i 's/ash/bash/g' /etc/passwd
+RUN echo "${TZ}" > /etc/timezone
 
 VOLUME /app/data
 WORKDIR /app/data
-
-RUN echo "${TZ}" > /etc/timezone
 
 COPY img_compress.sh /bin/img_compress.sh
 COPY .bashrc /root/.bashrc
