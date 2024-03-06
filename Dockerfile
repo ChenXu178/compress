@@ -11,7 +11,9 @@ ENV PNG_QUALITY=o3
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk update
-RUN apk add --no-cache --update bash bash-doc bash-completion shadow runuser optipng jpegoptim
+RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser optipng jpegoptim parallel
+
+RUN touch ~/.parallel/will-cite
 
 RUN sed -i 's/ash/bash/g' /etc/passwd
 
