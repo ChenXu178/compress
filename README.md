@@ -1,10 +1,10 @@
-# compress
+# img_compress
 这是一个Docker命令行图片压缩工具，支持指定路径下过滤图片大小进行压缩
 
 #### 安装
 
 ```bash
-docker run -d --name compress -v /path/to:/app/data liziwa/compress
+docker run -d --name ImgCompress -v /path/to:/app/data liziwa/img_compress
 ```
 
 #### 使用

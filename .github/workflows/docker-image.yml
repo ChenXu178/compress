@@ -6,8 +6,8 @@ on:
       - v*
 
 env:
-  APP_NAME: compress
-  DOCKERHUB_REPO: liziwa/compress
+  APP_NAME: img_compress
+  DOCKERHUB_REPO: liziwa/img_compress
 
 jobs:
   docker:
