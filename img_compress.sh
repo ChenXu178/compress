@@ -1,5 +1,7 @@
 #!/bin/bash 
 ###
+###图片压缩工具
+###
 ### 使用:
 ###
 ###   img_comperess.sh <param> ... <input>

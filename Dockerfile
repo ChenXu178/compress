@@ -11,7 +11,7 @@ ENV PNG_QUALITY=auto
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk update
-RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser pngquant jpegoptim parallel util-linux coreutils
+RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser pngquant jpegoptim parallel util-linux coreutils imagemagick
 
 RUN mkdir -p ~/.parallel
 RUN touch ~/.parallel/will-cite
@@ -23,9 +23,11 @@ WORKDIR /app/data
 
 COPY img_compress.sh /bin/img_compress.sh
 COPY compress.sh /bin/compress.sh
+COPY convert.sh /bin/convert.sh
 COPY .bashrc /root/.bashrc
 
 RUN chmod a+x /bin/img_compress.sh
 RUN chmod a+x /bin/compress.sh
+RUN chmod a+x /bin/convert.sh
 
 ENTRYPOINT ["tail", "-f", "/dev/null"]
