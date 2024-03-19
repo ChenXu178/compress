@@ -4,12 +4,13 @@
 ###
 ### 使用:
 ###
-###   convert.sh <param> <input>
+###   convert.sh <param> <path>
 ###
 ###
 ### 选项:
+###
 ###   png jpg		png和jpg图片互相转换，参数表示最终输出文件格式。		
-###   <input>		文件夹路径。
+###   <path>		文件夹路径。
 ###
 
 function echo_help(){
@@ -28,7 +29,7 @@ function start_convert(){
 	fi
 }
 
-if [[ -z "$1" || -z "$2" ]];then
+if [[ -z "$1" || -z "$2" ]]; then
 	echo_help
 	exit 0
 fi
@@ -39,7 +40,7 @@ else
 	echo -e "\033[41;33m 目标格式错误 \033[0m"
 fi
 
-if [ -d "${2}" ];then
+if [ -d "${2}" ]; then
     IMG_PATH="${2}"
 else
 	echo -e "\033[41;33m 文件夹路径错误 \033[0m"

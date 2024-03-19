@@ -4,12 +4,12 @@
 ###
 ### 使用:
 ###
-###   img_comperess.sh <param> ... <input>
+###   img_comperess.sh <param> ... <path>
 ###
 ###
 ### 选项:
 ###
-###   <input>		文件夹路径。
+###   <path>		文件夹路径。
 ###   -f, all jpg png	文件过滤，默认all即压缩全部图片。
 ###   -j, 0 - 100		jpg图片压缩率 数值小压缩率越高，默认从环境变量中读取，如果未设置则默认75。
 ###   -p, 0 - 100 auto	png图片压缩率 数值大压缩率越高，默认从环境变量中读取，如果未设置则默认auto。
@@ -52,21 +52,21 @@ function echo_help(){
 }
 
 function find_img(){
-	if [ $COMPRESS_JPG -eq 1 ];then
+	if [ $COMPRESS_JPG -eq 1 ]; then
 		#......jpegoptim.......jpg
 		find "$1" -size +$2 -name '*.jpg' -print0 | parallel -0 compress.sh jpg $MY_JPG_QUALITY {};
 		find "$1" -size +$2 -name '*.JPG' -print0 | parallel -0 compress.sh jpg $MY_JPG_QUALITY {};
 		find "$1" -size +$2 -name '*.jpeg' -print0 | parallel -0 compress.sh jpg $MY_JPG_QUALITY {};
 		find "$1" -size +$2 -name '*.JPEG' -print0 | parallel -0 compress.sh jpg $MY_JPG_QUALITY {};
 	fi
-    if [ $COMPRESS_PNG -eq 1 ];then
+    if [ $COMPRESS_PNG -eq 1 ]; then
 		#......pngquant.......png
 		find "$1" -size +$2 -name '*.png' -print0 | parallel -0 compress.sh png $MY_PNG_QUALITY {};
 		find "$1" -size +$2 -name '*.PNG' -print0 | parallel -0 compress.sh PNG $MY_PNG_QUALITY {};
 	fi
 }
 function show_config(){
-	if [[  $COMPRESS_JPG -eq 1 && $COMPRESS_PNG -eq 1 ]];then
+	if [[  $COMPRESS_JPG -eq 1 && $COMPRESS_PNG -eq 1 ]]; then
 		echo -e "\033[44;37m 压缩 jpg、png 图片，路径：$IMG_PATH \033[0m"
 		echo -e "\033[44;37m jpg 压缩率为(0-100)：$MY_JPG_QUALITY \033[0m"
 		echo -e "\033[44;37m png 压缩率为(0-100|auto)：$MY_PNG_QUALITY \033[0m"
@@ -102,7 +102,7 @@ function swap_seconds ()
     SEC=$1
     if [ $SEC -lt 60 ]; then
        ans=`echo ${SEC} 秒`
-    elif [ $SEC -ge 60 ] && [ $SEC -lt 3600 ];then
+    elif [ $SEC -ge 60 ] && [ $SEC -lt 3600 ]; then
        ans=`echo $(( SEC / 60 )) 分 $(( SEC % 60 )) 秒`
     elif [ $SEC -ge 3600 ]  && [ $SEC -lt 86400 ]; then
        ans=`echo $(( SEC / 3600 )) 时 $(( (SEC % 3600) / 60 )) 分 $(( (SEC % 3600) % 60 )) 秒`
@@ -115,12 +115,12 @@ while getopts ":f:j:p:m:" opt
 do
     case $opt in
         f)
-			if [[ $OPTARG =~ ^all$|^jpg$|^png$ ]];then
-				if [ $OPTARG = 'jpg' ];then
+			if [[ $OPTARG =~ ^all$|^jpg$|^png$ ]]; then
+				if [ $OPTARG = 'jpg' ]; then
 					COMPRESS_JPG=1
 					COMPRESS_PNG=0
 				fi
-				if [ $OPTARG = 'png' ];then
+				if [ $OPTARG = 'png' ]; then
 					COMPRESS_JPG=0
 					COMPRESS_PNG=1
 				fi
@@ -130,7 +130,7 @@ do
 			fi
 			;;
         j)
-			if [[ $OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100 ]];then
+			if [[ $OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100 ]]; then
 				MY_JPG_QUALITY=$OPTARG
 			else
 				echo -e "\033[41;33m -j 参数错误 \033[0m"
@@ -138,7 +138,7 @@ do
 			fi
 			;;
         p)
-			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) || $OPTARG = 'auto' ]];then
+			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) || $OPTARG = 'auto' ]]; then
 				MY_PNG_QUALITY=$OPTARG
 			else
 				echo -e "\033[41;33m -p 参数错误 \033[0m"
@@ -146,7 +146,7 @@ do
 			fi
 			;;
 		m)
-			if [[ $OPTARG =~ ^[1-9]?[0-9]?[0-9]?[0-9][b,c,w,k,M,G]$ ]];then
+			if [[ $OPTARG =~ ^[1-9]?[0-9]?[0-9]?[0-9][b,c,w,k,M,G]$ ]]; then
 				MIN_SIZE=$OPTARG
 			else
 				echo -e "\033[41;33m -m 参数错误 \033[0m"
@@ -161,11 +161,11 @@ do
     esac
 done
 
-if [ -z "$1" ];then
+if [ -z "$1" ]; then
 	echo_help
 	exit 0
 else
-	if [ -d "${!#}" ];then
+	if [ -d "${!#}" ]; then
         IMG_PATH="${!#}"
 	else
 		echo -e "\033[41;33m 文件夹路径错误 \033[0m"
