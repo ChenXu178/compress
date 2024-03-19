@@ -29,6 +29,6 @@ elif [[  $1 = 'png' || $1 = 'PNG'  ]]; then
 			echo $count > $PNG_COUNT_FILE
 		} 300<>/tmp/png_count.lock
 		rm -rf "$3"
-		mv $dir/"$filename"-fs8.png "$3"
+		mv "$dir"/"$filename"-fs8.png "$3"
 	fi
 fi 
