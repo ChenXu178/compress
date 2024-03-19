@@ -113,12 +113,14 @@ if [ -z "$1" ]; then
 	exit 0
 fi
 
-if [[ "$TMP_SORT" = 'asc' || "$TMP_SORT" = 'dsc' ]]; then
-    SORT="$TMP_SORT"
-else
-	echo -e "\033[41;33m 参数错误错误(asc|dsc) \033[0m"
-	exit 1
-fi 
+if [ -n "$TMP_SORT" ]; then
+	if [[ "$TMP_SORT" = 'asc' || "$TMP_SORT" = 'dsc' ]]; then
+		SORT="$TMP_SORT"
+	else
+		echo -e "\033[41;33m 参数错误错误(asc|dsc) \033[0m"
+		exit 1
+	fi 
+fi
 
 if [[ -d "$TMP_PATH" || -f "$TMP_PATH" ]]; then
     FILE_PATH="$TMP_PATH"

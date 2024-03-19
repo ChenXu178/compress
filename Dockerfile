@@ -11,7 +11,7 @@ ENV PNG_QUALITY=auto
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk update
-RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser pngquant jpegoptim parallel util-linux coreutils imagemagick
+RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser pngquant jpegoptim parallel util-linux coreutils imagemagick findutils
 
 RUN mkdir -p ~/.parallel
 RUN touch ~/.parallel/will-cite
