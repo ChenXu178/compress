@@ -20,7 +20,7 @@ elif [[  $1 = 'png' || $1 = 'PNG'  ]]; then
 	fi
 	filename=`basename -s .$1 "$3"`
 	dir=`dirname "$3"`
-	if [[ -f $dir/"$filename"-fs8.png ]]; then
+	if [[ -f "$dir"/"$filename"-fs8.png ]]; then
 		{
 			flock -x -w 5 300
 			[ $? -eq 1 ] && { exit; }
@@ -30,5 +30,20 @@ elif [[  $1 = 'png' || $1 = 'PNG'  ]]; then
 		} 300<>/tmp/png_count.lock
 		rm -rf "$3"
 		mv "$dir"/"$filename"-fs8.png "$3"
+	fi
+elif [[  $1 = 'webp' || $1 = 'WEBP'  ]]; then
+	filename=`basename -s .$1 "$3"`
+	dir=`dirname "$3"`
+	cwebp -q $(expr $2 + 0) "$3" -o "$dir"/"$filename"-compress.webp
+	if [[ -f "$dir"/"$filename"-compress.webp ]]; then
+		{
+			flock -x -w 5 400
+			[ $? -eq 1 ] && { exit; }
+			count=`cat $WEBP_COUNT_FILE`
+			let count++
+			echo $count > $WEBP_COUNT_FILE
+		} 400<>/tmp/webp_count.lock
+		rm -rf "$3"
+		mv "$dir"/"$filename"-compress.webp "$3"
 	fi
 fi 

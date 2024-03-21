@@ -8,10 +8,11 @@ ENV PUID=99
 ENV UMASK=022
 ENV JPG_QUALITY=75
 ENV PNG_QUALITY=auto
+ENV WEBP_QUALITY=75
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk update
-RUN apk add --no-cache --update tzdata bash bash-doc bash-completion shadow runuser pngquant jpegoptim parallel util-linux coreutils imagemagick findutils
+RUN apk add --no-cache --update tzdata bash bash-completion shadow runuser pngquant jpegoptim libwebp libwebp-tools parallel util-linux coreutils imagemagick findutils
 
 RUN mkdir -p ~/.parallel
 RUN touch ~/.parallel/will-cite
