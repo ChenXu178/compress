@@ -71,19 +71,25 @@ function echo_help(){
 
 function find_img(){
 	if [ $COMPRESS_JPG -eq 1 ]; then
+		find "$1" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
+		find "$1" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
 		find "$1" -size +$2 -name '*.jpg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
 		find "$1" -size +$2 -name '*.jpeg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
 	fi
     if [ $COMPRESS_PNG -eq 1 ]; then
+		find "$1" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
 		find "$1" -size +$2 -name '*.png' -type f -print0 | parallel -0 compress.sh png $PNG_QUALITY {};
 	fi
 	if [ $COMPRESS_WEBP -eq 1 ]; then
+		find "$1" -name "*.WEBP" -type f -exec rename ".WEBP" ".webp" {} \;
 		find "$1" -size +$2 -name '*.webp' -type f -print0 | parallel -0 compress.sh webp $WEBP_QUALITY {};
 	fi
 	if [ $COMPRESS_AVIF -eq 1 ]; then
+		find "$1" -name "*.AVIF" -type f -exec rename ".AVIF" ".avif" {} \;
 		find "$1" -size +$2 -name '*.avif' -type f -print0 | parallel -0 compress.sh avif $AVIF_QUALITY {};
 	fi
 	if [ $COMPRESS_HEIC -eq 1 ]; then
+		find "$1" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
 		find "$1" -size +$2 -name '*.heic' -type f -print0 | parallel -0 compress.sh heic $HEIC_QUALITY {};
 	fi
 }

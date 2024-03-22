@@ -31,6 +31,12 @@ function echo_help(){
 }
 
 function find_img(){
+	find "$IMG_PATH" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
+	find "$IMG_PATH" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
+	find "$IMG_PATH" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
+	find "$IMG_PATH" -name "*.WEBP" -type f -exec rename ".WEBP" ".webp" {} \;
+	find "$IMG_PATH" -name "*.AVIF" -type f -exec rename ".AVIF" ".avif" {} \;
+	find "$IMG_PATH" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
 	if [ $IMG_FORMAT = 'png' ]; then
 		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
 		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};

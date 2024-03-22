@@ -4,12 +4,12 @@ SOURCE=$1
 TARGET=$2
 QUALITY=$3
 IMG_PATH="$4"
-filename=`basename -s .$SOURCE "$IMG_PATH"`
-dir=`dirname "$IMG_PATH"`
+FILE_NAME=`basename -s .$SOURCE "$IMG_PATH"`
+DIR=`dirname "$IMG_PATH"`
 
-convert -verbose -quality $QUALITY "$IMG_PATH" "$dir"/"$filename".$TARGET
+convert -verbose -quality $QUALITY "$IMG_PATH" "$DIR"/"$FILE_NAME".$TARGET
 
-if [[ -f "$dir"/"$filename".$TARGET ]]; then
+if [[ -f "$DIR"/"$FILE_NAME".$TARGET ]]; then
 	{
 		flock -x -w 5 101
 		[ $? -eq 1 ] && { exit; }

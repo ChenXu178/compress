@@ -4,7 +4,7 @@ SOURCE=$1
 QUALITY=$2
 IMG_PATH="$3"
 FILE_NAME=`basename -s .$SOURCE "$IMG_PATH"`
-DIR=`DIRname "$IMG_PATH"`
+DIR=`dirname "$IMG_PATH"`
 
 if [ $SOURCE = 'jpg' ]; then
 	out=`jpegoptim --strip-all -m $QUALITY "$IMG_PATH"`
