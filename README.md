@@ -1,6 +1,6 @@
 # img_compress
 
-这是一个Docker命令行图片压缩工具，对指定路径下的 jpg 、png、webp 格式的图片进行压缩，可选图片压缩率，能大幅减少图片文件的空间占用
+这是一个Docker命令行图片转换/压缩工具，对指定路径下的图片进行格式转换、压缩，可选图片压缩率，能大幅减少图片文件的空间占用，支持 jpg / png / webp / avif / heic 格式的图片。
 
 #### 安装
 
@@ -34,8 +34,8 @@ docker exec -it CONTAINER_ID /bin/bash
 
 #### 环境变量
 
-` JPG_QUALITY ` jpg 格式的图片压缩质量，范围 0 - 100，默认 75，数字越小压缩率越高，画质越差
+` PGID ` Docker 运行时的用户组
 
-` PNG_QUALITY ` png 格式的图片压缩质量，范围 0 - 100 | auto，默认 auto，数字越小压缩率越高，画质越差
+` PUID ` Docker 运行时的用户
 
-` WEBP_QUALITY ` webp 格式的图片压缩质量，范围 0 - 100，默认 75，数字越小压缩率越高，画质越差
+` UMASK ` Docker 创建文件的掩码
