@@ -30,6 +30,12 @@ export WEBP_COUNT_FILE=/tmp/webp_count
 export AVIF_COUNT_FILE=/tmp/avif_count
 export HEIC_COUNT_FILE=/tmp/heic_count
 
+export JPG_IGNORE_FILE=/tmp/jpg_ignore
+export PNG_IGNORE_FILE=/tmp/png_ignore
+export WEBP_IGNORE_FILE=/tmp/webp_ignore
+export AVIF_IGNORE_FILE=/tmp/avif_ignore
+export HEIC_IGNORE_FILE=/tmp/heic_ignore
+
 ans=
 IMG_PATH=
 MIN_SIZE=1M
@@ -45,56 +51,75 @@ WEBP_QUALITY=75
 AVIF_QUALITY=75
 HEIC_QUALITY=75
 
-if [ -e $JPG_COUNT_FILE ]; then
-	rm -rf $JPG_COUNT_FILE
-fi
-
-if [ -e $PNG_COUNT_FILE ]; then
-	rm -rf $PNG_COUNT_FILE
-fi
-
-if [ -e $WEBP_COUNT_FILE ]; then
-	rm -rf $WEBP_COUNT_FILE
-fi
-
-if [ -e $AVIF_COUNT_FILE ]; then
-	rm -rf $AVIF_COUNT_FILE
-fi
-
-if [ -e $HEIC_COUNT_FILE ]; then
-	rm -rf $HEIC_COUNT_FILE
-fi
-
 function echo_help(){
 	sed -rn 's/^### ?//;T;p;' "$0"
 }
 
-function find_img(){
+function tidy(){
+	echo -e "\033[32m 开始整理图片 \033[0m"
+	find "$IMG_PATH" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
+	find "$IMG_PATH" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
+	find "$IMG_PATH" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
+	find "$IMG_PATH" -name "*.WEBP" -type f -exec rename ".WEBP" ".webp" {} \;
+	find "$IMG_PATH" -name "*.AVIF" -type f -exec rename ".AVIF" ".avif" {} \;
+	find "$IMG_PATH" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
+}
+
+function statistics(){
+	echo -e "\033[32m 开始统计图片数量 \033[0m"
+	jpgMax=0
+	pngMax=0
+	webpMax=0
+	avifMax=0
+	heicMax=0
 	if [ $COMPRESS_JPG -eq 1 ]; then
-		find "$1" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
-		find "$1" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
-		find "$1" -size +$2 -name '*.jpg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
-		find "$1" -size +$2 -name '*.jpeg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
+		jpgMax1=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f | wc -l`
+		jpgMax2=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f | wc -l`
+		let jpgMax=jpgMax1+jpgMax2
+		echo -e "\033[34m 预计处理jpg图片数量：$jpgMax \033[0m"
 	fi
-    if [ $COMPRESS_PNG -eq 1 ]; then
-		find "$1" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
-		find "$1" -size +$2 -name '*.png' -type f -print0 | parallel -0 compress.sh png $PNG_QUALITY {};
+	if [ $COMPRESS_PNG -eq 1 ]; then
+		pngMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f | wc -l`
+		echo -e "\033[34m 预计处理png图片数量：$pngMax \033[0m"
 	fi
 	if [ $COMPRESS_WEBP -eq 1 ]; then
-		find "$1" -name "*.WEBP" -type f -exec rename ".WEBP" ".webp" {} \;
-		find "$1" -size +$2 -name '*.webp' -type f -print0 | parallel -0 compress.sh webp $WEBP_QUALITY {};
+		webpMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f | wc -l`
+		echo -e "\033[34m 预计处理webp图片数量：$webpMax \033[0m"
 	fi
 	if [ $COMPRESS_AVIF -eq 1 ]; then
-		find "$1" -name "*.AVIF" -type f -exec rename ".AVIF" ".avif" {} \;
-		find "$1" -size +$2 -name '*.avif' -type f -print0 | parallel -0 compress.sh avif $AVIF_QUALITY {};
+		avifMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f | wc -l`
+		echo -e "\033[34m 预计处理avif图片数量：$avifMax \033[0m"
 	fi
 	if [ $COMPRESS_HEIC -eq 1 ]; then
-		find "$1" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
-		find "$1" -size +$2 -name '*.heic' -type f -print0 | parallel -0 compress.sh heic $HEIC_QUALITY {};
+		heicMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f | wc -l`
+		echo -e "\033[34m 预计处理heic图片数量：$heicMax \033[0m"
+	fi
+	let maxCount=jpgMax+pngMax+webpMax+avifMax+heicMax
+	export MAX_COUNT=$maxCount
+}
+
+function find_img(){
+	echo -e "\033[32m 开始压缩图片 \033[0m"
+	if [ $COMPRESS_JPG -eq 1 ]; then
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
+	fi
+    if [ $COMPRESS_PNG -eq 1 ]; then
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f -print0 | parallel -0 compress.sh png $PNG_QUALITY {};
+	fi
+	if [ $COMPRESS_WEBP -eq 1 ]; then
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f -print0 | parallel -0 compress.sh webp $WEBP_QUALITY {};
+	fi
+	if [ $COMPRESS_AVIF -eq 1 ]; then
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f -print0 | parallel -0 compress.sh avif $AVIF_QUALITY {};
+	fi
+	if [ $COMPRESS_HEIC -eq 1 ]; then
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f -print0 | parallel -0 compress.sh heic $HEIC_QUALITY {};
 	fi
 }
 
 function show_config(){
+	echo -e "\033[33m 开始处理前请确认拥有文件修改权限！！！ \033[0m"
 	if [[  $COMPRESS_JPG -eq 1 && $COMPRESS_PNG -eq 1 && $COMPRESS_WEBP -eq 1 && $COMPRESS_AVIF -eq 1 ]]; then
 		echo -e "\033[44;37m 压缩 jpg、png、webp、avif 图片： \033[0m"
 		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
@@ -132,10 +157,17 @@ function start_compress(){
 	echo "0" > $WEBP_COUNT_FILE
 	echo "0" > $AVIF_COUNT_FILE
 	echo "0" > $HEIC_COUNT_FILE
+	echo "0" > $JPG_IGNORE_FILE
+	echo "0" > $PNG_IGNORE_FILE
+	echo "0" > $WEBP_IGNORE_FILE
+	echo "0" > $AVIF_IGNORE_FILE
+	echo "0" > $HEIC_IGNORE_FILE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
 	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
-	find_img "$IMG_PATH" $MIN_SIZE
+	tidy
+	statistics
+	find_img
 	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
@@ -146,7 +178,15 @@ function start_compress(){
 	webpCount=`cat $WEBP_COUNT_FILE`
 	avifCount=`cat $AVIF_COUNT_FILE`
 	heicCount=`cat $HEIC_COUNT_FILE`
-	echo -e "\033[32m \n压缩完成！共处理 $jpgCount 张jpg图片、$pngCount 张png图片、$webpCount 张webp图片、$avifCount 张avif图片、$heicCount 张heic图片 ，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
+	
+	jpgIgnore=`cat $JPG_IGNORE_FILE`
+	pngIgnore=`cat $PNG_IGNORE_FILE`
+	webpIgnore=`cat $WEBP_IGNORE_FILE`
+	avifIgnore=`cat $AVIF_IGNORE_FILE`
+	heicIgnore=`cat $HEIC_IGNORE_FILE`
+	let count=jpgCount+pngCount+webpCount+avifCount+heicCount
+	let ignore=jpgIgnore+pngIgnore+webpIgnore+avifIgnore+heicIgnore
+	echo -e "\033[32m \n压缩完成！共处理 $count 张图片，跳过 $ignore 张图片 ，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
 }
 
 function swap_seconds ()

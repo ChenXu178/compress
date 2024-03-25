@@ -21,22 +21,49 @@ ans=
 QUALITY=99
 
 export CONVERT_COUNT_FILE=/tmp/convert_count
-
-if [ -e $CONVERT_COUNT_FILE ]; then
-	rm -rf $CONVERT_COUNT_FILE
-fi
+export CONVERT_IGNORE_FILE=/tmp/ignore_count
 
 function echo_help(){
 	sed -rn 's/^### ?//;T;p;' "$0"
 }
 
-function find_img(){
+function tidy(){
+	echo -e "\033[32m 开始整理图片 \033[0m"
 	find "$IMG_PATH" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
 	find "$IMG_PATH" -name "*.WEBP" -type f -exec rename ".WEBP" ".webp" {} \;
 	find "$IMG_PATH" -name "*.AVIF" -type f -exec rename ".AVIF" ".avif" {} \;
 	find "$IMG_PATH" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
+}
+
+function statistics(){
+	echo -e "\033[32m 开始统计图片数量 \033[0m"
+
+	jpgMax1=`find "$IMG_PATH" -name '*.jpg' -type f | wc -l`
+	jpgMax2=`find "$IMG_PATH" -name '*.jpeg' -type f | wc -l`
+	pngMax=`find "$IMG_PATH" -name '*.png' -type f | wc -l`
+	webpMax=`find "$IMG_PATH" -name '*.webp' -type f | wc -l`
+	avifMax=`find "$IMG_PATH" -name '*.avif' -type f | wc -l`
+	heicMax=`find "$IMG_PATH" -name '*.heic' -type f | wc -l`
+	let jpgMax=jpgMax1+jpgMax2
+	if [ $IMG_FORMAT = 'png' ]; then
+		let maxCount=jpgMax+webpMax+avifMax+heicMax
+	elif [ $IMG_FORMAT = "jpg" ]; then
+		let maxCount=pngMax+webpMax+avifMax+heicMax
+	elif [ $IMG_FORMAT = "webp" ]; then
+		let maxCount=jpgMax+pngMax+avifMax+heicMax
+	elif [ $IMG_FORMAT = "avif" ]; then
+		let maxCount=jpgMax+pngMax+webpMax+heicMax
+	elif [ $IMG_FORMAT = "heic" ]; then
+		let maxCount=jpgMax+pngMax+webpMax+avifMax
+	fi
+	export MAX_COUNT=$maxCount
+	echo -e "\033[34m 预计转换图片数量：$jpgMax \033[0m"
+}
+
+function find_img(){
+	echo -e "\033[32m 开始转换图片 \033[0m"
 	if [ $IMG_FORMAT = 'png' ]; then
 		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
 		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
@@ -71,9 +98,12 @@ function find_img(){
 
 function start_convert(){
 	echo "0" > $CONVERT_COUNT_FILE
+	echo "0" > $CONVERT_IGNORE_FILE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
 	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
+	tidy
+	statistics
 	find_img
 	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
@@ -81,7 +111,8 @@ function start_convert(){
 	sumTime=$[ $endTime_s - $startTime_s ]
 	swap_seconds $sumTime
 	convertCount=`cat $CONVERT_COUNT_FILE`
-	echo -e "\033[32m \n转换完成！共处理 $convertCount 张图片，原始大小：$oldsize，转换后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
+	ignoreCount=`cat $CONVERT_IGNORE_FILE`
+	echo -e "\033[32m \n转换完成！共处理 $convertCount 张图片，失败 $ignoreCount 张，原始大小：$oldsize，转换后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
 }
 
 function swap_seconds ()
@@ -107,6 +138,7 @@ if [[ $1 = 'png' ||  $1 = 'jpg' ||  $1 = 'webp' ||  $1 = 'avif' ||  $1 = 'heic' 
 	IMG_FORMAT=$1
 else
 	echo -e "\033[41;33m 目标格式错误 \033[0m"
+	exit 1
 fi
 if [ $# -eq 2 ]; then
 	if [ -d "${2}" ]; then
