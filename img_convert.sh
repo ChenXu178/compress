@@ -4,7 +4,7 @@
 ###
 ### 使用:
 ###
-###   img_convert.sh <type> <quality> <path>
+###   iconvert.sh <type> <quality> <path>
 ###
 ###
 ### 选项:
@@ -14,21 +14,52 @@
 ###   <path>	文件夹路径。
 ###
 
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:/home/chenxu/downloads/compress
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:$SCRIPTPATH
 export PATH
 
 ans=
 QUALITY=99
+CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
+CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.9 / 1" | bc`
+CPU=1
 
+export LOG_FILE=/tmp/convert.log
 export CONVERT_COUNT_FILE=/tmp/convert_count
 export CONVERT_IGNORE_FILE=/tmp/ignore_count
+
+if [ $CPU_SUITABLE -gt 1 ]; then
+	CPU=$CPU_SUITABLE
+fi
 
 function echo_help(){
 	sed -rn 's/^### ?//;T;p;' "$0"
 }
 
+function log () {
+	DATE=`date "+%Y-%m-%d %H:%M:%S"`
+	if [ $1 = 'r' ]; then
+		echo -e "\033[31m$2\033[0m"
+		echo "${DATE} $0 [ERROR] $@" >> $LOG_FILE
+	elif [ $1 = 'y' ]; then
+		echo -e "\033[33m$2\033[0m"
+		echo "${DATE} $0 [WARN] $@" >> $LOG_FILE
+	elif [ $1 = 'g' ]; then
+		echo -e "\033[32m$2\033[0m"
+		echo "${DATE} $0 [INFO] $@" >> $LOG_FILE
+	elif [ $1 = 'b' ]; then
+		echo -e "\033[34m$2\033[0m"
+		echo "${DATE} $0 [DEBUG] $@" >> $LOG_FILE
+	else
+		echo -e "$2"
+		echo "${DATE} $0 [VERBOSE] $@" >> $LOG_FILE
+	fi
+}
+
 function tidy(){
-	echo -e "\033[32m 开始整理图片 \033[0m"
+	log 'g' "开始整理图片"
 	find "$IMG_PATH" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
@@ -38,8 +69,7 @@ function tidy(){
 }
 
 function statistics(){
-	echo -e "\033[32m 开始统计图片数量 \033[0m"
-
+	log 'g' "正在统计图片数量"
 	jpgMax1=`find "$IMG_PATH" -name '*.jpg' -type f | wc -l`
 	jpgMax2=`find "$IMG_PATH" -name '*.jpeg' -type f | wc -l`
 	pngMax=`find "$IMG_PATH" -name '*.png' -type f | wc -l`
@@ -59,40 +89,40 @@ function statistics(){
 		let maxCount=jpgMax+pngMax+webpMax+avifMax
 	fi
 	export MAX_COUNT=$maxCount
-	echo -e "\033[34m 预计转换图片数量：$jpgMax \033[0m"
+	log 'b' "预计转换图片数量：$maxCount"
 }
 
 function find_img(){
-	echo -e "\033[32m 开始转换图片 \033[0m"
+	log 'g' "开始转换图片，线程数 $CPU"
 	if [ $IMG_FORMAT = 'png' ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "jpg" ]; then
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "webp" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "avif" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "heic" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
 	fi
 }
 
@@ -101,18 +131,18 @@ function start_convert(){
 	echo "0" > $CONVERT_IGNORE_FILE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
+	log 'g' "正在计算文件大小"
 	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
-	tidy
-	statistics
 	find_img
+	log 'g' "转换完成，正在计算文件大小"
 	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
 	sumTime=$[ $endTime_s - $startTime_s ]
 	swap_seconds $sumTime
 	convertCount=`cat $CONVERT_COUNT_FILE`
-	ignoreCount=`cat $CONVERT_IGNORE_FILE`
-	echo -e "\033[32m \n转换完成！共处理 $convertCount 张图片，失败 $ignoreCount 张，原始大小：$oldsize，转换后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
+	let error=maxCount-convertCount
+	log 'g' "\n转换完成！共处理 $convertCount 张图片，失败 $error 张，原始大小：$oldsize，转换后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n"
 }
 
 function swap_seconds ()
@@ -137,31 +167,31 @@ fi
 if [[ $1 = 'png' ||  $1 = 'jpg' ||  $1 = 'webp' ||  $1 = 'avif' ||  $1 = 'heic' ||  $1 = 'total' ]]; then
 	IMG_FORMAT=$1
 else
-	echo -e "\033[41;33m 目标格式错误 \033[0m"
+	log 'r' "目标格式错误"
 	exit 1
 fi
 if [ $# -eq 2 ]; then
 	if [ -d "${2}" ]; then
 		IMG_PATH="${2}"
 	else
-		echo -e "\033[41;33m 文件夹路径错误 \033[0m"
+		log 'r' "文件夹路径错误"
 		exit 1
 	fi 
 elif [ $# -eq 3 ]; then
 	if [[ $2 =~ ^[01]?[0-9]?[0-9]$ && $2 -le 100 ]]; then
 		QUALITY=$2
 	else
-		echo -e "\033[41;33m 转换质量错误 \033[0m"
+		log 'r' "转换质量错误"
 		exit 1
 	fi 
 	if [ -d "${3}" ]; then
 		IMG_PATH="${3}"
 	else
-		echo -e "\033[41;33m 文件夹路径错误 \033[0m"
+		log 'r' "文件夹路径错误"
 		exit 1
 	fi
 else
-	echo -e "\033[41;33m 参数错误 \033[0m"
+	log 'r' "参数错误"
 	exit 1
 fi
 
@@ -169,8 +199,16 @@ if [ $IMG_FORMAT = 'total' ]; then
 	find "$IMG_PATH" -type f -name "*.*" | awk -F. '{print $NF}' | sort | uniq -c -i
 	exit 0
 fi
-
-echo -e "\033[44;37m 图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，路径：$IMG_PATH \033[0m"
+if [ -f $LOG_FILE ]; then
+	echo "" > $LOG_FILE
+fi
+log 'y' "请确认拥有文件修改权限！！！"
+log 'b' "图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，路径：$IMG_PATH"
+tidy
+statistics
+if [ $maxCount -eq 0 ]; then
+	exit 0
+fi
 read -r -p "确认参数是否正确？[Y/n] " input
 case $input in
     [yY][eE][sS]|[yY])

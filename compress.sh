@@ -6,6 +6,27 @@ IMG_PATH="$3"
 FILE_NAME=`basename -s .$SOURCE "$IMG_PATH"`
 DIR=`dirname "$IMG_PATH"`
 RESULT=0
+OUT=
+
+function log () {
+	DATE=`date "+%Y-%m-%d %H:%M:%S"`
+	if [ $1 = 'r' ]; then
+		echo -e "\033[31m$2\033[0m"
+		echo "${DATE} $0 [ERROR] $@" >> $LOG_FILE
+	elif [ $1 = 'y' ]; then
+		echo -e "\033[33m$2\033[0m"
+		echo "${DATE} $0 [WARN] $@" >> $LOG_FILE
+	elif [ $1 = 'g' ]; then
+		echo -e "\033[32m$2\033[0m"
+		echo "${DATE} $0 [INFO] $@" >> $LOG_FILE
+	elif [ $1 = 'b' ]; then
+		echo -e "\033[34m$2\033[0m"
+		echo "${DATE} $0 [DEBUG] $@" >> $LOG_FILE
+	else
+		echo -e "$2"
+		echo "${DATE} $0 [VERBOSE] $@" >> $LOG_FILE
+	fi
+}
 
 function progress_bar(){
 	max=$1
@@ -23,14 +44,13 @@ function progress_bar(){
 		text+="-"
 	done
 	text+="] [$progress_f%] $current/$max"
-	echo -e "\033[34m $text \033[0m"
-	echo -e "\n"
+	log 'b' "$text"
 }
-
+log 'g' "\n$IMG_PATH"
 if [ $SOURCE = 'jpg' ]; then
-	out=`jpegoptim --strip-all -m $QUALITY "$IMG_PATH"`
-	echo $out
-	value=`echo "$out" | sed 's/(/ /g' | sed 's/%)/ /g' | awk '{print $(NF-2)}'`
+	OUT=`jpegoptim --strip-all -m $QUALITY "$IMG_PATH"`
+	log 'w' "$OUT"
+	value=`echo "$OUT" | sed 's/(/ /g' | sed 's/%)/ /g' | awk '{print $(NF-2)}'`
 	if [[ -n $value && `echo "$value > 1" | bc` -eq 1 ]]; then
 		RESULT=1
 	fi
@@ -49,10 +69,11 @@ if [ $SOURCE = 'jpg' ]; then
 	} 200<>/tmp/jpg_count.lock
 elif [ $SOURCE = 'png' ]; then
 	if [ $QUALITY = 'auto' ]; then
-		pngquant --skip-if-larger -v -f --ext -ictmp.png "$IMG_PATH"
+		OUT=`pngquant --skip-if-larger -v -f --ext -ictmp.png "$IMG_PATH"`
 	else
-		pngquant --skip-if-larger -v -f --ext -ictmp.png --quality $QUALITY "$IMG_PATH"
+		OUT=`pngquant --skip-if-larger -v -f --ext -ictmp.png --quality $QUALITY "$IMG_PATH"`
 	fi
+	log 'w' "$OUT"
 	if [[ -f "$DIR"/"$FILE_NAME"-ictmp.png ]]; then
 		RESULT=1
 		rm -rf "$IMG_PATH"
@@ -72,7 +93,8 @@ elif [ $SOURCE = 'png' ]; then
 		fi
 	} 300<>/tmp/png_count.lock
 elif [ $SOURCE = 'webp' ]; then
-	cwebp -q $(expr $QUALITY + 0) "$IMG_PATH" -o "$DIR"/"$FILE_NAME"-ictmp.webp
+	OUT=`cwebp -q $(expr $QUALITY + 0) "$IMG_PATH" -o "$DIR"/"$FILE_NAME"-ictmp.webp`
+	log 'w' "$OUT"
 	if [[ -f "$DIR"/"$FILE_NAME"-ictmp.webp ]]; then
 		RESULT=1
 		rm -rf "$IMG_PATH"
@@ -92,7 +114,8 @@ elif [ $SOURCE = 'webp' ]; then
 		fi
 	} 400<>/tmp/webp_count.lock
 elif [[ $SOURCE = 'avif' || $SOURCE = 'heic' ]]; then
-	convert -verbose -quality $QUALITY "$IMG_PATH" "$DIR"/"$FILE_NAME"-ictmp.$SOURCE
+	OUT=`convert -verbose -quality $QUALITY "$IMG_PATH" "$DIR"/"$FILE_NAME"-ictmp.$SOURCE`
+	log 'w' "$OUT"
 	if [[ -f "$DIR"/"$FILE_NAME"-ictmp.$SOURCE ]]; then
 		RESULT=1
 		rm -rf "$IMG_PATH"

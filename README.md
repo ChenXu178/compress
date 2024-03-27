@@ -17,13 +17,13 @@ docker exec -it CONTAINER_ID /bin/bash
 - **压缩图片**
 
   ```bash
-  img_compress.sh -f all -j 75 -p auto -w 75 -m 1M ./img
+  icompress.sh -f all -j 75 -p auto -w 75 -m 1M ./img
   ```
 
 - **图片格式转换**
 
   ```
-  convert.sh jpg ./img
+  iconvert.sh jpg ./img
   ```
   
 - **文件大小排序**

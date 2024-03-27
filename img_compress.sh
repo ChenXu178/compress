@@ -4,7 +4,7 @@
 ###
 ### 使用:
 ###
-###   img_comperess.sh <param> ... <path>
+###   icomperess.sh <param> ... <path>
 ###
 ###
 ### 选项:
@@ -16,14 +16,19 @@
 ###   -w, 0 - 100			webp图片压缩率 数值小压缩率越高，默认75。
 ###   -a, 0 - 100			avif图片压缩率 数值小压缩率越高，默认75。
 ###   -h, 0 - 100			heic图片压缩率 数值小压缩率越高，默认75。
-###   -m,				图片的最低大小，低于这个大小的图片将会被过滤，默认1M。
+###   -m,				图片的最低大小，低于这个大小的图片将会被过滤，默认2M。
 ###   -s,				统计各类型文件数量。
 ###   -h,				显示帮助信息。
+###				日志保存在/tmp/compress.log
 ###
 
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:/home/chenxu/downloads/compress
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:$SCRIPTPATH
 export PATH
 
+export LOG_FILE=/tmp/compress.log
 export JPG_COUNT_FILE=/tmp/jpg_count
 export PNG_COUNT_FILE=/tmp/png_count
 export WEBP_COUNT_FILE=/tmp/webp_count
@@ -37,8 +42,11 @@ export AVIF_IGNORE_FILE=/tmp/avif_ignore
 export HEIC_IGNORE_FILE=/tmp/heic_ignore
 
 ans=
+CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
+CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.9 / 1" | bc`
+CPU=1
 IMG_PATH=
-MIN_SIZE=1M
+MIN_SIZE=2M
 COMPRESS_JPG=1
 COMPRESS_PNG=1
 COMPRESS_WEBP=1
@@ -51,12 +59,36 @@ WEBP_QUALITY=75
 AVIF_QUALITY=75
 HEIC_QUALITY=75
 
+if [ $CPU_SUITABLE -gt 1 ]; then
+	CPU=$CPU_SUITABLE
+fi
+
 function echo_help(){
 	sed -rn 's/^### ?//;T;p;' "$0"
 }
 
+function log () {
+	DATE=`date "+%Y-%m-%d %H:%M:%S"`
+	if [ $1 = 'r' ]; then
+		echo -e "\033[31m$2\033[0m"
+		echo "${DATE} $0 [ERROR] $@" >> $LOG_FILE
+	elif [ $1 = 'y' ]; then
+		echo -e "\033[33m$2\033[0m"
+		echo "${DATE} $0 [WARN] $@" >> $LOG_FILE
+	elif [ $1 = 'g' ]; then
+		echo -e "\033[32m$2\033[0m"
+		echo "${DATE} $0 [INFO] $@" >> $LOG_FILE
+	elif [ $1 = 'b' ]; then
+		echo -e "\033[34m$2\033[0m"
+		echo "${DATE} $0 [DEBUG] $@" >> $LOG_FILE
+	else
+		echo -e "$2"
+		echo "${DATE} $0 [VERBOSE] $@" >> $LOG_FILE
+	fi
+}
+
 function tidy(){
-	echo -e "\033[32m 开始整理图片 \033[0m"
+	log 'g' "正在整理图片"
 	find "$IMG_PATH" -name "*.JPG" -type f -exec rename ".JPG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.JPEG" -type f -exec rename ".JPEG" ".jpg" {} \;
 	find "$IMG_PATH" -name "*.PNG" -type f -exec rename ".PNG" ".png" {} \;
@@ -66,7 +98,7 @@ function tidy(){
 }
 
 function statistics(){
-	echo -e "\033[32m 开始统计图片数量 \033[0m"
+	log 'g' "正在统计图片数量"
 	jpgMax=0
 	pngMax=0
 	webpMax=0
@@ -76,79 +108,82 @@ function statistics(){
 		jpgMax1=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f | wc -l`
 		jpgMax2=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f | wc -l`
 		let jpgMax=jpgMax1+jpgMax2
-		echo -e "\033[34m 预计处理jpg图片数量：$jpgMax \033[0m"
+		log 'b' "jpg图片数量：$jpgMax"
 	fi
 	if [ $COMPRESS_PNG -eq 1 ]; then
 		pngMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f | wc -l`
-		echo -e "\033[34m 预计处理png图片数量：$pngMax \033[0m"
+		log 'b' "png图片数量：$pngMax"
 	fi
 	if [ $COMPRESS_WEBP -eq 1 ]; then
 		webpMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f | wc -l`
-		echo -e "\033[34m 预计处理webp图片数量：$webpMax \033[0m"
+		log 'b' "webp图片数量：$webpMax"
 	fi
 	if [ $COMPRESS_AVIF -eq 1 ]; then
 		avifMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f | wc -l`
-		echo -e "\033[34m 预计处理avif图片数量：$avifMax \033[0m"
+		log 'b' "avif图片数量：$avifMax"
 	fi
 	if [ $COMPRESS_HEIC -eq 1 ]; then
 		heicMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f | wc -l`
-		echo -e "\033[34m 预计处理heic图片数量：$heicMax \033[0m"
+		log 'b' "heic图片数量：$heicMax"
 	fi
 	let maxCount=jpgMax+pngMax+webpMax+avifMax+heicMax
+	log 'b' "预计总共处理图片 $maxCount 张"
 	export MAX_COUNT=$maxCount
 }
 
 function find_img(){
-	echo -e "\033[32m 开始压缩图片 \033[0m"
+	echo -e "\033[32m 开始压缩图片，线程数：$CPU \033[0m"
+	#log "开始压缩图片，线程数：$CPU"
 	if [ $COMPRESS_JPG -eq 1 ]; then
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f -print0 | parallel -0 compress.sh jpg $JPG_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f -print0 | parallel --jobs $CPU -0 compress.sh jpg $JPG_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f -print0 | parallel --jobs $CPU -0 compress.sh jpg $JPG_QUALITY {};
 	fi
     if [ $COMPRESS_PNG -eq 1 ]; then
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f -print0 | parallel -0 compress.sh png $PNG_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f -print0 | parallel --jobs $CPU -0 compress.sh png $PNG_QUALITY {};
 	fi
 	if [ $COMPRESS_WEBP -eq 1 ]; then
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f -print0 | parallel -0 compress.sh webp $WEBP_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f -print0 | parallel --jobs $CPU -0 compress.sh webp $WEBP_QUALITY {};
 	fi
 	if [ $COMPRESS_AVIF -eq 1 ]; then
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f -print0 | parallel -0 compress.sh avif $AVIF_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f -print0 | parallel --jobs $CPU -0 compress.sh avif $AVIF_QUALITY {};
 	fi
 	if [ $COMPRESS_HEIC -eq 1 ]; then
-		find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f -print0 | parallel -0 compress.sh heic $HEIC_QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f -print0 | parallel --jobs $CPU -0 compress.sh heic $HEIC_QUALITY {};
 	fi
 }
 
 function show_config(){
-	echo -e "\033[33m 开始处理前请确认拥有文件修改权限！！！ \033[0m"
+	log 'y' "请确认拥有文件修改权限！！！"
 	if [[  $COMPRESS_JPG -eq 1 && $COMPRESS_PNG -eq 1 && $COMPRESS_WEBP -eq 1 && $COMPRESS_AVIF -eq 1 ]]; then
-		echo -e "\033[44;37m 压缩 jpg、png、webp、avif 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m jpg 压缩率：$JPG_QUALITY \033[0m"
-		echo -e "\033[44;37m png 压缩率：$PNG_QUALITY \033[0m"
-		echo -e "\033[44;37m webp 压缩率：$WEBP_QUALITY \033[0m"
-		echo -e "\033[44;37m avif 压缩率：$AVIF_QUALITY \033[0m"
+		text+="压缩 jpg、png、webp、avif 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="jpg 压缩率：$JPG_QUALITY\n"
+		text+="png 压缩率：$PNG_QUALITY\n"
+		text+="webp 压缩率：$WEBP_QUALITY\n"
+		text+="avif 压缩率：$AVIF_QUALITY\n"
 	elif [ $COMPRESS_JPG -eq 1 ]; then
-		echo -e "\033[44;37m 压缩 jpg 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m 压缩率：$JPG_QUALITY \033[0m"
+		text+="压缩 jpg 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="压缩率：$JPG_QUALITY\n"
 	elif [ $COMPRESS_PNG -eq 1 ]; then
-		echo -e "\033[44;37m 压缩 png 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m 压缩率：$PNG_QUALITY \033[0m"
+		text+="压缩 png 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="压缩率：$PNG_QUALITY\n"
 	elif [ $COMPRESS_WEBP -eq 1 ]; then
-		echo -e "\033[44;37m 压缩 webp 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m 压缩率：$WEBP_QUALITY \033[0m"
+		text+="压缩 webp 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="压缩率：$WEBP_QUALITY\n"
 	elif [ $COMPRESS_AVIF -eq 1 ]; then
-		echo -e "\033[44;37m 压缩 avif 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m 压缩率：$AVIF_QUALITY \033[0m"
+		text+="压缩 avif 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="压缩率：$AVIF_QUALITY\n"
 	elif [ $COMPRESS_HEIC -eq 1 ]; then
-		echo -e "\033[44;37m 压缩 heic 图片： \033[0m"
-		echo -e "\033[44;37m 路径：$IMG_PATH \033[0m"
-		echo -e "\033[44;37m 压缩率：$HEIC_QUALITY \033[0m"
+		text+="压缩 heic 图片：\n"
+		text+="路径：$IMG_PATH\n"
+		text+="压缩率：$HEIC_QUALITY\n"
 	fi
-	echo -e "\033[44;37m 排除大小低于 $MIN_SIZE 的图片 \033[0m"
+	text+="排除大小低于 $MIN_SIZE 的图片"
+	log 'b' "$text"
 }
 
 function start_compress(){
@@ -164,10 +199,10 @@ function start_compress(){
 	echo "0" > $HEIC_IGNORE_FILE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
+	log 'b' "正在计算文件大小"
 	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
-	tidy
-	statistics
 	find_img
+	log 'b' "压缩完成，正在计算文件大小"
 	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
@@ -186,7 +221,8 @@ function start_compress(){
 	heicIgnore=`cat $HEIC_IGNORE_FILE`
 	let count=jpgCount+pngCount+webpCount+avifCount+heicCount
 	let ignore=jpgIgnore+pngIgnore+webpIgnore+avifIgnore+heicIgnore
-	echo -e "\033[32m \n压缩完成！共处理 $count 张图片，跳过 $ignore 张图片 ，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n \033[0m"
+	let error=maxCount-count-ignore
+	log 'g' "\n压缩完成！共处理 $count 张图片，错误 $error 张图片，跳过 $ignore 张图片，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n"
 }
 
 function swap_seconds ()
@@ -240,7 +276,7 @@ do
 					COMPRESS_HEIC=1
 				fi
 			else
-				echo -e "\033[41;33m -f 参数错误 \033[0m"
+				log 'r' "-f 参数错误"
 				exit 1
 			fi
 			;;
@@ -248,7 +284,7 @@ do
 			if [[ $OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100 ]]; then
 				JPG_QUALITY=$OPTARG
 			else
-				echo -e "\033[41;33m -j 参数错误 \033[0m"
+				log 'r' "-j 参数错误"
 				exit 1
 			fi
 			;;
@@ -256,7 +292,7 @@ do
 			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) || $OPTARG = 'auto' ]]; then
 				PNG_QUALITY=$OPTARG
 			else
-				echo -e "\033[41;33m -p 参数错误 \033[0m"
+				log 'r' "-p 参数错误"
 				exit 1
 			fi
 			;;
@@ -264,7 +300,7 @@ do
 			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) ]]; then
 				WEBP_QUALITY=$OPTARG
 			else
-				echo -e "\033[41;33m -p 参数错误 \033[0m"
+				log 'r' "-w 参数错误"
 				exit 1
 			fi
 			;;
@@ -272,7 +308,7 @@ do
 			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) ]]; then
 				AVIF_QUALITY=$OPTARG
 			else
-				echo -e "\033[41;33m -p 参数错误 \033[0m"
+				log 'r' "-a 参数错误"
 				exit 1
 			fi
 			;;
@@ -280,7 +316,7 @@ do
 			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) ]]; then
 				HEIC_QUALITY=$OPTARG
 			else
-				echo -e "\033[41;33m -p 参数错误 \033[0m"
+				log 'r' "-h 参数错误"
 				exit 1
 			fi
 			;;
@@ -288,12 +324,12 @@ do
 			if [[ $OPTARG =~ ^[1-9]?[0-9]?[0-9]?[0-9][b,c,w,k,M,G]$ ]]; then
 				MIN_SIZE=$OPTARG
 			else
-				echo -e "\033[41;33m -m 参数错误 \033[0m"
+				log 'r' "-m 参数错误"
 				exit 1
 			fi
 			;;
         ?)
-			echo -e "\033[41;33m 参数错误 \033[0m"
+			log 'r' "参数错误"
 			echo_help
 			exit 1
 			;;
@@ -307,11 +343,19 @@ else
 	if [ -d "${!#}" ]; then
         IMG_PATH="${!#}"
 	else
-		echo -e "\033[41;33m 文件夹路径错误 \033[0m"
+		log 'r' "文件夹路径错误"
 		exit 1
 	fi
 fi
+if [ -f $LOG_FILE ]; then
+	echo "" > $LOG_FILE
+fi
 show_config
+tidy
+statistics
+if [ $maxCount -eq 0 ]; then
+	exit 0
+fi
 read -r -p "确认参数是否正确？[Y/n] " input
 case $input in
     [yY][eE][sS]|[yY])

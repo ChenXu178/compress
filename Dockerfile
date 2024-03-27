@@ -23,9 +23,9 @@ WORKDIR /app/data
 RUN mkdir -p /app/.parallel
 RUN touch /app/.parallel/will-cite
 
-COPY img_compress.sh /bin/img_compress.sh
+COPY img_compress.sh /bin/icompress.sh
 COPY compress.sh /bin/compress.sh
-COPY img_convert.sh /bin/img_convert.sh
+COPY img_convert.sh /bin/iconvert.sh
 COPY convert.sh /bin/convert.sh
 COPY size_sort.sh /bin/size_sort.sh
 COPY root.bashrc /root/.bashrc
@@ -33,9 +33,9 @@ COPY docker.bashrc /app/.bashrc
 
 RUN chown -R docker:users /app/.parallel
 RUN chown docker:users /app/.bashrc
-RUN chmod a+x /bin/img_compress.sh
+RUN chmod a+x /bin/icompress.sh
 RUN chmod a+x /bin/compress.sh
-RUN chmod a+x /bin/img_convert.sh
+RUN chmod a+x /bin/iconvert.sh
 RUN chmod a+x /bin/convert.sh
 RUN chmod a+x /bin/size_sort.sh
 

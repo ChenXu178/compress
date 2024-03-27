@@ -7,6 +7,27 @@ IMG_PATH="$4"
 FILE_NAME=`basename -s .$SOURCE "$IMG_PATH"`
 DIR=`dirname "$IMG_PATH"`
 RESULT=0
+OUT=
+
+function log () {
+	DATE=`date "+%Y-%m-%d %H:%M:%S"`
+	if [ $1 = 'r' ]; then
+		echo -e "\033[31m$2\033[0m"
+		echo "${DATE} $0 [ERROR] $@" >> $LOG_FILE
+	elif [ $1 = 'y' ]; then
+		echo -e "\033[33m$2\033[0m"
+		echo "${DATE} $0 [WARN] $@" >> $LOG_FILE
+	elif [ $1 = 'g' ]; then
+		echo -e "\033[32m$2\033[0m"
+		echo "${DATE} $0 [INFO] $@" >> $LOG_FILE
+	elif [ $1 = 'b' ]; then
+		echo -e "\033[34m$2\033[0m"
+		echo "${DATE} $0 [DEBUG] $@" >> $LOG_FILE
+	else
+		echo -e "$2"
+		echo "${DATE} $0 [VERBOSE] $@" >> $LOG_FILE
+	fi
+}
 
 function progress_bar(){
 	max=$1
@@ -24,11 +45,11 @@ function progress_bar(){
 		text+="-"
 	done
 	text+="] [$progress_f%] $current/$max"
-	echo -e "\033[34m $text \033[0m"
-	echo -e "\n"
+	log 'b' "$text"
 }
 
-convert -verbose -quality $QUALITY "$IMG_PATH" "$DIR"/"$FILE_NAME".$TARGET
+log 'g' "\n$IMG_PATH"
+convert -quality $QUALITY "$IMG_PATH" "$DIR"/"$FILE_NAME".$TARGET
 
 if [[ -f "$DIR"/"$FILE_NAME".$TARGET ]]; then
 	RESULT=1
