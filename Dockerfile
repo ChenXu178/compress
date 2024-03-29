@@ -9,7 +9,7 @@ ENV UMASK=022
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN apk update
-RUN apk add --no-cache --update tzdata bash bash-completion shadow runuser pngquant jpegoptim libwebp libwebp-tools libavif libavif-apps parallel util-linux coreutils imagemagick findutils imagemagick-heic imagemagick-jpeg imagemagick-webp file
+RUN apk add --no-cache --update tzdata bash bash-completion shadow runuser pngquant jpegoptim libwebp libwebp-tools libavif libavif-apps parallel util-linux coreutils imagemagick imagemagick-static findutils imagemagick-heic imagemagick-jpeg imagemagick-webp file
 
 RUN sed -i 's/ash/bash/g' /etc/passwd
 RUN echo "${TZ}" > /etc/timezone

@@ -4,14 +4,16 @@
 ###
 ### 使用:
 ###
-###   iconvert.sh <type> <quality> <path>
+###   iconvert.sh <param> ... <path>
 ###
 ###
 ### 选项:
 ###
-###   <type>	目标格式，支持png/jpg/webp/avif/png/jpg/webp/avif/heic，total 统计目录内各文件数量 
-###   0 - 100	转换质量，默认99
-###   <path>	文件夹路径。
+###   -t			png/jpg/webp/avif/png/jpg/webp/avif/heic/total，目标格式，total 统计目录内各文件数量 
+###   -q			0 - 100，转换质量，默认99
+###   -m,			b,c,w,k,M,G，图片的最低大小，低于这个大小的图片将会被过滤，默认全部转换。
+###   <path>		文件夹路径。
+###					日志保存在/tmp/convert.log
 ###
 
 SCRIPT=$(readlink -f "$0")
@@ -21,6 +23,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:$SCRIPTPATH
 export PATH
 
 ans=
+MIN_SIZE=0k
 QUALITY=99
 CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
 CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.9 / 1" | bc`
@@ -70,12 +73,12 @@ function tidy(){
 
 function statistics(){
 	log 'g' "正在统计图片数量"
-	jpgMax1=`find "$IMG_PATH" -name '*.jpg' -type f | wc -l`
-	jpgMax2=`find "$IMG_PATH" -name '*.jpeg' -type f | wc -l`
-	pngMax=`find "$IMG_PATH" -name '*.png' -type f | wc -l`
-	webpMax=`find "$IMG_PATH" -name '*.webp' -type f | wc -l`
-	avifMax=`find "$IMG_PATH" -name '*.avif' -type f | wc -l`
-	heicMax=`find "$IMG_PATH" -name '*.heic' -type f | wc -l`
+	jpgMax1=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f | wc -l`
+	jpgMax2=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f | wc -l`
+	pngMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f | wc -l`
+	webpMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f | wc -l`
+	avifMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f | wc -l`
+	heicMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f | wc -l`
 	let jpgMax=jpgMax1+jpgMax2
 	if [ $IMG_FORMAT = 'png' ]; then
 		let maxCount=jpgMax+webpMax+avifMax+heicMax
@@ -95,34 +98,34 @@ function statistics(){
 function find_img(){
 	log 'g' "开始转换图片，线程数 $CPU"
 	if [ $IMG_FORMAT = 'png' ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "jpg" ]; then
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "webp" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "avif" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.heic" -type f -print0 | parallel --jobs $CPU -0 convert.sh heic $IMG_FORMAT $QUALITY {};
 	elif [ $IMG_FORMAT = "heic" ]; then
-		find "$IMG_PATH" -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
-		find "$IMG_PATH" -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.png" -type f -print0 | parallel --jobs $CPU -0 convert.sh png $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.webp" -type f -print0 | parallel --jobs $CPU -0 convert.sh webp $IMG_FORMAT $QUALITY {};
+		find "$IMG_PATH" -size +$MIN_SIZE -name "*.avif" -type f -print0 | parallel --jobs $CPU -0 convert.sh avif $IMG_FORMAT $QUALITY {};
 	fi
 }
 
@@ -159,40 +162,55 @@ function swap_seconds ()
     fi
 }
 
-if [[ -z "$1" || -z "$2" ]]; then
+while getopts ":t:q:m:" opt
+do
+    case $opt in
+        t)
+			if [[ $OPTARG =~ ^jpg$|^png$|^webp$|^avif$|^heic$|^total$ ]]; then
+				IMG_FORMAT=$OPTARG
+			else
+				log 'r' "-t 参数错误"
+				exit 1
+			fi
+			;;
+        q)
+			if [[ $OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100 ]]; then
+				QUALITY=$OPTARG
+			else
+				log 'r' "-q 参数错误"
+				exit 1
+			fi
+			;;
+		m)
+			if [[ $OPTARG =~ ^[1-9]?[0-9]?[0-9]?[0-9][b,c,w,k,M,G]$ ]]; then
+				MIN_SIZE=$OPTARG
+			else
+				log 'r' "-m 参数错误"
+				exit 1
+			fi
+			;;
+        ?)
+			log 'r' "参数错误"
+			echo_help
+			exit 1
+			;;
+    esac
+done
+
+if [ -z "$1" ]; then
 	echo_help
 	exit 0
-fi
-
-if [[ $1 = 'png' ||  $1 = 'jpg' ||  $1 = 'webp' ||  $1 = 'avif' ||  $1 = 'heic' ||  $1 = 'total' ]]; then
-	IMG_FORMAT=$1
 else
-	log 'r' "目标格式错误"
-	exit 1
-fi
-if [ $# -eq 2 ]; then
-	if [ -d "${2}" ]; then
-		IMG_PATH="${2}"
-	else
-		log 'r' "文件夹路径错误"
-		exit 1
-	fi 
-elif [ $# -eq 3 ]; then
-	if [[ $2 =~ ^[01]?[0-9]?[0-9]$ && $2 -le 100 ]]; then
-		QUALITY=$2
-	else
-		log 'r' "转换质量错误"
-		exit 1
-	fi 
-	if [ -d "${3}" ]; then
-		IMG_PATH="${3}"
+	if [[ ! $1 =~ ^-[t,q,m]$ ]]; then
+		log 'r' "参数错误"
+		exit 1 
+	fi
+	if [ -d "${!#}" ]; then
+        IMG_PATH="${!#}"
 	else
 		log 'r' "文件夹路径错误"
 		exit 1
 	fi
-else
-	log 'r' "参数错误"
-	exit 1
 fi
 
 if [ $IMG_FORMAT = 'total' ]; then
@@ -203,7 +221,7 @@ if [ -f $LOG_FILE ]; then
 	echo "" > $LOG_FILE
 fi
 log 'y' "请确认拥有文件修改权限！！！"
-log 'b' "图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，路径：$IMG_PATH"
+log 'b' "图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，排除大小低于 $MIN_SIZE 的图片，路径：$IMG_PATH"
 tidy
 statistics
 if [ $maxCount -eq 0 ]; then

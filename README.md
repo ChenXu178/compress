@@ -23,7 +23,7 @@ docker exec -it CONTAINER_ID /bin/bash
 - **图片格式转换**
 
   ```
-  iconvert.sh jpg ./img
+  iconvert.sh -t jpg -q 75 -m 2M ./img
   ```
   
 - **文件大小排序**
@@ -34,8 +34,8 @@ docker exec -it CONTAINER_ID /bin/bash
 
 #### 环境变量
 
-` PGID ` Docker 运行时的用户组
+` PGID ` Docker 运行时的用户组，默认 100
 
-` PUID ` Docker 运行时的用户
+` PUID ` Docker 运行时的用户，默认 99
 
-` UMASK ` Docker 创建文件的掩码
+` UMASK ` Docker 创建文件的掩码，默认 022
