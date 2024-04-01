@@ -12,8 +12,9 @@
 ###   -t			png/jpg/webp/avif/png/jpg/webp/avif/heic/total，目标格式，total 统计目录内各文件数量 
 ###   -q			0 - 100，转换质量，默认99
 ###   -m,			b,c,w,k,M,G，图片的最低大小，低于这个大小的图片将会被过滤，默认全部转换。
+###   -c,			指定CPU线程数。
 ###   <path>		文件夹路径。
-###					日志保存在/tmp/convert.log
+###			日志保存在/tmp/convert.log
 ###
 
 SCRIPT=$(readlink -f "$0")
@@ -26,7 +27,7 @@ ans=
 MIN_SIZE=0k
 QUALITY=99
 CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
-CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.9 / 1" | bc`
+CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.6 / 1" | bc`
 CPU=1
 
 export LOG_FILE=/tmp/convert.log
@@ -96,7 +97,7 @@ function statistics(){
 }
 
 function find_img(){
-	log 'g' "开始转换图片，线程数 $CPU"
+	log 'g' "开始转换图片"
 	if [ $IMG_FORMAT = 'png' ]; then
 		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpg $IMG_FORMAT $QUALITY {};
 		find "$IMG_PATH" -size +$MIN_SIZE -name "*.jpeg" -type f -print0 | parallel --jobs $CPU -0 convert.sh jpeg $IMG_FORMAT $QUALITY {};
@@ -135,17 +136,15 @@ function start_convert(){
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
 	log 'g' "正在计算文件大小"
-	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	find_img
 	log 'g' "转换完成，正在计算文件大小"
-	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
-	sumTime=$[ $endTime_s - $startTime_s ]
+	let sumTime=endTime_s-startTime_s
 	swap_seconds $sumTime
 	convertCount=`cat $CONVERT_COUNT_FILE`
 	let error=maxCount-convertCount
-	log 'g' "\n转换完成！共处理 $convertCount 张图片，失败 $error 张，原始大小：$oldsize，转换后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n"
+	log 'g' "\n转换完成！共处理 $convertCount 张图片，失败 $error 张，$startTime -> $endTime 总耗时：$ans\n"
 }
 
 function swap_seconds ()
@@ -162,7 +161,7 @@ function swap_seconds ()
     fi
 }
 
-while getopts ":t:q:m:" opt
+while getopts ":t:q:m:c:" opt
 do
     case $opt in
         t)
@@ -186,6 +185,14 @@ do
 				MIN_SIZE=$OPTARG
 			else
 				log 'r' "-m 参数错误"
+				exit 1
+			fi
+			;;
+		c)
+			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) ]]; then
+				CPU=$OPTARG
+			else
+				log 'r' "-c 参数错误"
 				exit 1
 			fi
 			;;
@@ -220,10 +227,10 @@ fi
 if [ -f $LOG_FILE ]; then
 	echo "" > $LOG_FILE
 fi
-log 'y' "请确认拥有文件修改权限！！！"
-log 'b' "图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，排除大小低于 $MIN_SIZE 的图片，路径：$IMG_PATH"
 tidy
 statistics
+log 'y' "请确认拥有文件修改权限！！！"
+log 'b' "图片转换为 $IMG_FORMAT 格式，质量 $QUALITY ，排除大小低于 $MIN_SIZE 的图片，路径：$IMG_PATH，并行线程数 $CPU"
 if [ $maxCount -eq 0 ]; then
 	exit 0
 fi

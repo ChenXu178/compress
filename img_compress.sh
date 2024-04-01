@@ -17,9 +17,10 @@
 ###   -h			0 - 100，heic图片压缩率 数值小压缩率越高，默认75。
 ###   -m,			图片的最低大小，低于这个大小的图片将会被过滤，默认2M。
 ###   -s,			统计各类型文件数量。
+###   -c,			指定CPU线程数。
 ###   -h,			显示帮助信息。
 ###   <path>		文件夹路径。
-###					日志保存在/tmp/compress.log
+###			日志保存在/tmp/compress.log
 ###
 
 SCRIPT=$(readlink -f "$0")
@@ -41,9 +42,10 @@ export WEBP_IGNORE_FILE=/tmp/webp_ignore
 export AVIF_IGNORE_FILE=/tmp/avif_ignore
 export HEIC_IGNORE_FILE=/tmp/heic_ignore
 
-ans=
+ANS=
+SIZE_FORMAT=
 CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
-CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.9 / 1" | bc`
+CPU_SUITABLE=`echo "scale=0; $CPU_MAX * 0.6 / 1" | bc`
 CPU=1
 IMG_PATH=
 MIN_SIZE=2M
@@ -97,42 +99,73 @@ function tidy(){
 	find "$IMG_PATH" -name "*.HEIC" -type f -exec rename ".HEIC" ".heic" {} \;
 }
 
+function statistics_file(){
+	oldIFS=$IFS
+	IFS=$'\n'
+	for file in `find "$IMG_PATH" -size +$MIN_SIZE -name "*.$1" -type f`
+	do
+		let TOTAL_COUNT++
+		let TOTAL_SIZE+=`wc -c < "$file"`
+	done
+	IFS=$oldIFS
+}
+
 function statistics(){
-	log 'g' "正在统计图片数量"
-	jpgMax=0
-	pngMax=0
-	webpMax=0
-	avifMax=0
-	heicMax=0
+	TOTAL_COUNT=0
+	TOTAL_SIZE=0
+	if [ $1 = 'start' ]; then
+		log 'g' "正在统计图片数量"
+	fi
+	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_JPG -eq 1 ]; then
-		jpgMax1=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f | wc -l`
-		jpgMax2=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpeg' -type f | wc -l`
-		let jpgMax=jpgMax1+jpgMax2
-		log 'b' "jpg图片数量：$jpgMax"
+		statistics_file jpg
+		statistics_file jpeg
+		let jpgMax=TOTAL_COUNT-tmp
+		if [ $1 = 'start' ]; then
+			log 'b' "jpg图片数量：$jpgMax"
+		fi
 	fi
+	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_PNG -eq 1 ]; then
-		pngMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.png' -type f | wc -l`
-		log 'b' "png图片数量：$pngMax"
+		statistics_file png
+		let pngMax=TOTAL_COUNT-tmp
+		if [ $1 = 'start' ]; then
+			log 'b' "png图片数量：$pngMax"
+		fi
 	fi
+	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_WEBP -eq 1 ]; then
-		webpMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.webp' -type f | wc -l`
-		log 'b' "webp图片数量：$webpMax"
+		statistics_file webp
+		let webpMax=TOTAL_COUNT-tmp
+		if [ $1 = 'start' ]; then
+			log 'b' "webp图片数量：$webpMax"
+		fi
 	fi
+	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_AVIF -eq 1 ]; then
-		avifMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.avif' -type f | wc -l`
-		log 'b' "avif图片数量：$avifMax"
+		statistics_file avif
+		let avifMax=TOTAL_COUNT-tmp
+		if [ $1 = 'start' ]; then
+			log 'b' "avif图片数量：$avifMax"
+		fi
 	fi
+	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_HEIC -eq 1 ]; then
-		heicMax=`find "$IMG_PATH" -size +$MIN_SIZE -name '*.heic' -type f | wc -l`
-		log 'b' "heic图片数量：$heicMax"
+		statistics_file heic
+		let heicMax=TOTAL_COUNT-tmp
+		if [ $1 = 'start' ]; then
+			log 'b' "heic图片数量：$heicMax"
+		fi
 	fi
-	let maxCount=jpgMax+pngMax+webpMax+avifMax+heicMax
-	log 'b' "预计总共处理图片 $maxCount 张"
-	export MAX_COUNT=$maxCount
+	if [ $1 = 'start' ]; then
+		log 'b' "预计总共处理图片 $TOTAL_COUNT 张"
+	fi
+	format_size $TOTAL_SIZE
+	export MAX_COUNT=$TOTAL_COUNT
 }
 
 function find_img(){
-	echo -e "\033[32m 开始压缩图片，线程数：$CPU \033[0m"
+	echo -e "\033[32m 开始压缩图片 \033[0m"
 	#log "开始压缩图片，线程数：$CPU"
 	if [ $COMPRESS_JPG -eq 1 ]; then
 		find "$IMG_PATH" -size +$MIN_SIZE -name '*.jpg' -type f -print0 | parallel --jobs $CPU -0 compress.sh jpg $JPG_QUALITY {};
@@ -182,7 +215,8 @@ function show_config(){
 		text+="路径：$IMG_PATH\n"
 		text+="压缩率：$HEIC_QUALITY\n"
 	fi
-	text+="排除大小低于 $MIN_SIZE 的图片"
+	text+="排除大小低于 $MIN_SIZE 的图片\n"
+	text+="并行线程数：$CPU"
 	log 'b' "$text"
 }
 
@@ -200,13 +234,14 @@ function start_compress(){
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
 	log 'b' "正在计算文件大小"
-	oldsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
+	oldsize=$SIZE_FORMAT
 	find_img
 	log 'b' "压缩完成，正在计算文件大小"
-	nowsize=`du -sh "$IMG_PATH" | awk '{print $1}'`
+	statistics end
+	nowsize=$SIZE_FORMAT
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
-	sumTime=$[ $endTime_s - $startTime_s ]
+	let sumTime=endTime_s-startTime_s
 	swap_seconds $sumTime
 	jpgCount=`cat $JPG_COUNT_FILE`
 	pngCount=`cat $PNG_COUNT_FILE`
@@ -221,25 +256,43 @@ function start_compress(){
 	heicIgnore=`cat $HEIC_IGNORE_FILE`
 	let count=jpgCount+pngCount+webpCount+avifCount+heicCount
 	let ignore=jpgIgnore+pngIgnore+webpIgnore+avifIgnore+heicIgnore
-	let error=maxCount-count-ignore
-	log 'g' "\n压缩完成！共处理 $count 张图片，错误 $error 张图片，跳过 $ignore 张图片，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ans\n"
+	let error=MAX_COUNT-count-ignore
+	log 'g' "\n压缩完成！共处理 $count 张图片，错误 $error 张图片，跳过 $ignore 张图片，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ANS\n"
 }
 
 function swap_seconds ()
 {
     SEC=$1
     if [ $SEC -lt 60 ]; then
-       ans=`echo ${SEC} 秒`
+       ANS=`echo ${SEC} 秒`
     elif [ $SEC -ge 60 ] && [ $SEC -lt 3600 ]; then
-       ans=`echo $(( SEC / 60 )) 分 $(( SEC % 60 )) 秒`
+       ANS=`echo $(( SEC / 60 )) 分 $(( SEC % 60 )) 秒`
     elif [ $SEC -ge 3600 ]  && [ $SEC -lt 86400 ]; then
-       ans=`echo $(( SEC / 3600 )) 时 $(( (SEC % 3600) / 60 )) 分 $(( (SEC % 3600) % 60 )) 秒`
+       ANS=`echo $(( SEC / 3600 )) 时 $(( (SEC % 3600) / 60 )) 分 $(( (SEC % 3600) % 60 )) 秒`
     elif [ $SEC -ge 86400 ]; then
-       ans=`echo $(( SEC / 86400 )) 天 $(( (SEC % 86400) / 3600 )) 时 $(( (SEC % 3600) / 60 )) 分 $(( (SEC % 3600) % 60 )) 秒`
+       ANS=`echo $(( SEC / 86400 )) 天 $(( (SEC % 86400) / 3600 )) 时 $(( (SEC % 3600) / 60 )) 分 $(( (SEC % 3600) % 60 )) 秒`
     fi
 }
 
-while getopts ":f:j:p:w:a:h:m:" opt
+function format_size ()
+{
+    totalsize=$1
+    if [ $totalsize -lt 1048576 ]; then
+       SIZE_FORMAT=`echo "scale=2; a = $totalsize / 1024 ; if (length(a)==scale(a)) print 0;print a" | bc `
+       SIZE_FORMAT="$SIZE_FORMAT KB"
+    elif [ $totalsize -ge 1048576 ] && [ $totalsize -lt 1073741824 ]; then
+       SIZE_FORMAT=`echo "scale=2; a = $totalsize / 1048576 ; if (length(a)==scale(a)) print 0;print a" | bc `
+       SIZE_FORMAT="$SIZE_FORMAT MB"
+    elif [ $totalsize -ge 1073741824 ]  && [ $totalsize -lt 1099511627776 ]; then
+       SIZE_FORMAT=`echo "scale=2; a = $totalsize / 1073741824 ; if (length(a)==scale(a)) print 0;print a" | bc `
+       SIZE_FORMAT="$SIZE_FORMAT GB"
+    elif [ $totalsize -ge 1099511627776 ]; then
+       SIZE_FORMAT=`echo "scale=2; a = $totalsize / 1099511627776 ; if (length(a)==scale(a)) print 0;print a" | bc `
+       SIZE_FORMAT="$SIZE_FORMAT TB"
+    fi
+}
+
+while getopts ":f:j:p:w:a:h:m:c:" opt
 do
     case $opt in
         f)
@@ -328,6 +381,14 @@ do
 				exit 1
 			fi
 			;;
+		c)
+			if [[ ($OPTARG =~ ^[01]?[0-9]?[0-9]$ && $OPTARG -le 100) ]]; then
+				CPU=$OPTARG
+			else
+				log 'r' "-c 参数错误"
+				exit 1
+			fi
+			;;
         ?)
 			log 'r' "参数错误"
 			echo_help
@@ -351,10 +412,10 @@ fi
 if [ -f $LOG_FILE ]; then
 	echo "" > $LOG_FILE
 fi
-show_config
 tidy
-statistics
-if [ $maxCount -eq 0 ]; then
+statistics start
+show_config
+if [ $TOTAL_COUNT -eq 0 ]; then
 	exit 0
 fi
 read -r -p "确认参数是否正确？[Y/n] " input
