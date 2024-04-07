@@ -42,6 +42,8 @@ export WEBP_IGNORE_FILE=/tmp/webp_ignore
 export AVIF_IGNORE_FILE=/tmp/avif_ignore
 export HEIC_IGNORE_FILE=/tmp/heic_ignore
 
+export COMPRESS_FILE_SIZE=/tmp/compress_file_size
+
 ANS=
 SIZE_FORMAT=
 CPU_MAX=`cat /proc/cpuinfo | grep "processor" | wc -l`
@@ -113,54 +115,40 @@ function statistics_file(){
 function statistics(){
 	TOTAL_COUNT=0
 	TOTAL_SIZE=0
-	if [ $1 = 'start' ]; then
-		log 'g' "正在统计图片数量"
-	fi
+	log 'g' "正在统计图片数量"
 	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_JPG -eq 1 ]; then
 		statistics_file jpg
 		statistics_file jpeg
 		let jpgMax=TOTAL_COUNT-tmp
-		if [ $1 = 'start' ]; then
-			log 'b' "jpg图片数量：$jpgMax"
-		fi
+		log 'b' "jpg图片数量：$jpgMax"
 	fi
 	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_PNG -eq 1 ]; then
 		statistics_file png
 		let pngMax=TOTAL_COUNT-tmp
-		if [ $1 = 'start' ]; then
-			log 'b' "png图片数量：$pngMax"
-		fi
+		log 'b' "png图片数量：$pngMax"
 	fi
 	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_WEBP -eq 1 ]; then
 		statistics_file webp
 		let webpMax=TOTAL_COUNT-tmp
-		if [ $1 = 'start' ]; then
-			log 'b' "webp图片数量：$webpMax"
-		fi
+		log 'b' "webp图片数量：$webpMax"
 	fi
 	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_AVIF -eq 1 ]; then
 		statistics_file avif
 		let avifMax=TOTAL_COUNT-tmp
-		if [ $1 = 'start' ]; then
-			log 'b' "avif图片数量：$avifMax"
-		fi
+		log 'b' "avif图片数量：$avifMax"
 	fi
 	tmp=$TOTAL_COUNT
 	if [ $COMPRESS_HEIC -eq 1 ]; then
 		statistics_file heic
 		let heicMax=TOTAL_COUNT-tmp
-		if [ $1 = 'start' ]; then
-			log 'b' "heic图片数量：$heicMax"
-		fi
-	fi
-	if [ $1 = 'start' ]; then
-		log 'b' "预计总共处理图片 $TOTAL_COUNT 张"
+		log 'b' "heic图片数量：$heicMax"
 	fi
 	format_size $TOTAL_SIZE
+	log 'b' "预计总共处理图片 $TOTAL_COUNT 张，共 $SIZE_FORMAT"
 	export MAX_COUNT=$TOTAL_COUNT
 }
 
@@ -231,14 +219,12 @@ function start_compress(){
 	echo "0" > $WEBP_IGNORE_FILE
 	echo "0" > $AVIF_IGNORE_FILE
 	echo "0" > $HEIC_IGNORE_FILE
+	echo "0" > $COMPRESS_FILE_SIZE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
 	log 'b' "正在计算文件大小"
 	oldsize=$SIZE_FORMAT
 	find_img
-	log 'b' "压缩完成，正在计算文件大小"
-	statistics end
-	nowsize=$SIZE_FORMAT
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
 	let sumTime=endTime_s-startTime_s
@@ -254,10 +240,13 @@ function start_compress(){
 	webpIgnore=`cat $WEBP_IGNORE_FILE`
 	avifIgnore=`cat $AVIF_IGNORE_FILE`
 	heicIgnore=`cat $HEIC_IGNORE_FILE`
+
+	format_size `cat $COMPRESS_FILE_SIZE`
+	nowsize=$SIZE_FORMAT
 	let count=jpgCount+pngCount+webpCount+avifCount+heicCount
 	let ignore=jpgIgnore+pngIgnore+webpIgnore+avifIgnore+heicIgnore
 	let error=MAX_COUNT-count-ignore
-	log 'g' "\n压缩完成！共处理 $count 张图片，错误 $error 张图片，跳过 $ignore 张图片，原始大小：$oldsize，压缩后大小：$nowsize，$startTime -> $endTime 总耗时：$ANS\n"
+	log 'g' "\n压缩完成！共处理 $count 张图片，错误 $error 张图片，跳过 $ignore 张图片，原始大小：$oldsize，已压缩文件大小：$nowsize，$startTime -> $endTime 总耗时：$ANS\n"
 }
 
 function swap_seconds ()
@@ -413,7 +402,7 @@ if [ -f $LOG_FILE ]; then
 	echo "" > $LOG_FILE
 fi
 tidy
-statistics start
+statistics
 show_config
 if [ $TOTAL_COUNT -eq 0 ]; then
 	exit 0

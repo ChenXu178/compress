@@ -135,15 +135,13 @@ function start_convert(){
 	echo "0" > $CONVERT_IGNORE_FILE
 	startTime=`date +%Y-%m-%d\ %H:%M:%S`
 	startTime_s=`date +%s`
-	log 'g' "正在计算文件大小"
 	find_img
-	log 'g' "转换完成，正在计算文件大小"
 	endTime=`date +%Y-%m-%d\ %H:%M:%S`
 	endTime_s=`date +%s`
 	let sumTime=endTime_s-startTime_s
 	swap_seconds $sumTime
 	convertCount=`cat $CONVERT_COUNT_FILE`
-	let error=maxCount-convertCount
+	let error=MAX_COUNT-convertCount
 	log 'g' "\n转换完成！共处理 $convertCount 张图片，失败 $error 张，$startTime -> $endTime 总耗时：$ans\n"
 }
 

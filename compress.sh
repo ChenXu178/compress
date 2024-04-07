@@ -164,5 +164,9 @@ fi
 	
 	let progress=jpgCount+pngCount+webpCount+avifCount+heicCount+jpgIgnore+pngIgnore+webpIgnore+avifIgnore+heicIgnore
 	progress_bar $MAX_COUNT $progress
+	
+	compressFileSize=`cat $COMPRESS_FILE_SIZE`
+	let compressFileSize+=`wc -c < "$IMG_PATH"`
+	echo $compressFileSize > $COMPRESS_FILE_SIZE
 } 100<>/tmp/progress_bar.lock
 
