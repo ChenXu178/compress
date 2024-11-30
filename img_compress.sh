@@ -21,6 +21,8 @@
 ###   <path>		文件夹路径。
 ###			日志保存在/tmp/compress.log
 ###
+### 图片格式转换请使用 iconvert.sh
+###
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
